@@ -1,0 +1,17 @@
+[Unit]
+Description=Hosts file web editor
+After=network.target
+
+[Service]
+WorkingDirectory=@SYSCONFDIR@/@ASSEMBLY_NAME@
+ExecStart=@BINDIR@/@ASSEMBLY_NAME@
+Restart=always
+RestartSec=10
+SyslogIdentifier=@ASSEMBLY_NAME@
+User=@USER@
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://localhost:@PORT@
+Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+
+[Install]
+WantedBy=multi-user.target

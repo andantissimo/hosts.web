@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>loading...</title>
+    <style>
+        * {
+            border: none;
+            margin: 0;
+            padding: 0;
+            outline: none;
+            overflow: hidden;
+        }
+        html, body, form, textarea {
+            width: 100%;
+            height: 100%;
+        }
+        textarea {
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    <form name="hosts">
+        <textarea autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="off"></textarea>
+    </form>
+    <script>
+        /**
+         * @param {string} url
+         * @returns {Promise<string | null>}
+         */
+        async function get(url) {
+            const response = await fetch(url);
+            return response.ok ? await response.text() : null;
+        }
+
+        /**
+         * @param {string} url
+         * @param {string} text
+         * @returns {Promise<boolean>}
+         */
+        async function put(url, text) {
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'text/plain; charset=UTF-8' },
+                body: text,
+            });
+            return response.ok;
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const $form = document.querySelector('form');
+            const $textarea = $form.querySelector('textarea');
+
+            let hosts = await get('etc/hosts');
+            if (hosts !== null) {
+                document.title = '/etc/hosts';
+                $textarea.value = hosts;
+            }
+
+            $textarea.addEventListener('input', () => {
+                document.title = ($textarea.value !== hosts ?  '* ' : '') + '/etc/hosts';
+            });
+
+            /** @param {Event} e */
+            async function onsubmit(e) {
+                e.preventDefault();
+                if (!await put('etc/hosts', $textarea.value))
+                    return;
+                document.title = '/etc/hosts';
+                hosts = $textarea.value;
+            }
+
+            $form.addEventListener('submit', onsubmit);
+
+            const cmdKey = /^Mac/.test(navigator.platform) ? 'metaKey' : 'ctrlKey';
+            document.addEventListener('keydown', e => {
+                if (e[cmdKey] && !e.altKey && !e.shiftKey && e.key === 's')
+                    return onsubmit(e);
+            });
+        });
+    </script>
+</body>
+</html>
