@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Net.Mime;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static System.Environment;
 using static System.IO.File;
@@ -12,6 +13,8 @@ namespace Hosts.Web.Controllers
     [Route("etc/hosts")]
     public class HostsController : ControllerBase
     {
+        private static readonly Regex CnamePattern = new Regex("^cname=.*$", RegexOptions.Multiline | RegexOptions.Compiled);
+
         private readonly ILogger _logger;
         private readonly AppSettings _settings;
 
@@ -25,14 +28,23 @@ namespace Hosts.Web.Controllers
         [Produces(MediaTypeNames.Text.Plain)]
         public async Task<string> GetAsync()
         {
-            return await ReadAllTextAsync(_settings.HostsFilePath).ConfigureAwait(false);
+            var hosts = await ReadAllTextAsync(_settings.HostsFilePath).ConfigureAwait(false);
+            var cname = await ReadAllTextAsync(_settings.CnameFilePath).ConfigureAwait(false);
+            return hosts + NewLine + cname;
         }
 
         [HttpPut]
         [Consumes(MediaTypeNames.Text.Plain)]
         public async Task PutAsync([FromBody] string hosts)
         {
-            await WriteAllTextAsync(_settings.HostsFilePath, hosts).ConfigureAwait(false);
+            var cname = string.Empty;
+            hosts = CnamePattern.Replace(hosts, match =>
+            {
+                cname += NewLine + match.Value;
+                return string.Empty;
+            });
+            await WriteAllTextAsync(_settings.HostsFilePath, hosts.Trim() + NewLine).ConfigureAwait(false);
+            await WriteAllTextAsync(_settings.CnameFilePath, cname.Trim() + NewLine).ConfigureAwait(false);
 
             var si = new ProcessStartInfo().UseStandardIO().WithArguments(_settings.ReloadCommand);
             var (code, stdout, stderr) = await si.StartAsync().ConfigureAwait(false);

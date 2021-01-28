@@ -11,7 +11,9 @@ provides web interface to edit dnsmasq custom hosts file
 
 ## Installation
 
-1. create an `/usr/local/etc/hosts` as dnsmasq user
+1. create these files owned by dnsmasq user
+   * `/usr/local/etc/hosts`
+   * `/etc/dnsmasq.d/cname`
 2. configure dnsmasq.conf to use the custom hosts file
    ```
    addn-hosts=/usr/local/etc/hosts
