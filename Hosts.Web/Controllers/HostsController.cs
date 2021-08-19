@@ -30,7 +30,7 @@ namespace Hosts.Web.Controllers
         {
             var hosts = await ReadAllTextAsync(_settings.HostsFilePath).ConfigureAwait(false);
             var cname = await ReadAllTextAsync(_settings.CnameFilePath).ConfigureAwait(false);
-            return hosts + NewLine + cname;
+            return hosts.Trim() + NewLine + cname.Trime();
         }
 
         [HttpPut]
