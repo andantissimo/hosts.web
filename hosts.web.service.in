@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=@SYSCONFDIR@/@ASSEMBLY_NAME@
-ExecStart=@BINDIR@/@ASSEMBLY_NAME@
+ExecStart=@SBINDIR@/@ASSEMBLY_NAME@
 Restart=always
 RestartSec=10
 SyslogIdentifier=@ASSEMBLY_NAME@

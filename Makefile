@@ -1,5 +1,5 @@
 PREFIX        ?= /usr/local
-BINDIR        ?= $(PREFIX)/bin
+SBINDIR       ?= $(PREFIX)/sbin
 SYSCONFDIR    ?= $(PREFIX)/etc
 SERVICE_USER  ?= $(shell id -un $(shell ps -p `pgrep dnsmasq || echo 1` -o uid=))
 SERVICE_PORT  ?= 5053
@@ -20,7 +20,7 @@ install: all
 	install -d -m 755 $(SYSCONFDIR)/$(ASSEMBLY_NAME)/wwwroot
 	install -m 644 $(OUTDIR)/wwwroot/index.html $(SYSCONFDIR)/$(ASSEMBLY_NAME)/wwwroot/index.html
 	install -m 644 $(OUTDIR)/appsettings.json $(SYSCONFDIR)/$(ASSEMBLY_NAME)/appsettings.json
-	install -m 755 $(OUTDIR)/$(ASSEMBLY_NAME) $(BINDIR)/$(ASSEMBLY_NAME)
+	install -m 755 $(OUTDIR)/$(ASSEMBLY_NAME) $(SBINDIR)/$(ASSEMBLY_NAME)
 	install -m 644 $(OUTDIR)/$(ASSEMBLY_NAME).service /etc/systemd/system/$(ASSEMBLY_NAME).service
 
 clean:
@@ -32,7 +32,7 @@ $(OUTDIR)/$(ASSEMBLY_NAME): $(SRCS)
 $(OUTDIR)/$(ASSEMBLY_NAME).service: hosts.web.service.in
 	cat hosts.web.service.in \
 	  | sed -e 's:@ASSEMBLY_NAME@:$(ASSEMBLY_NAME):' \
-	        -e 's:@BINDIR@:$(BINDIR):' \
+	        -e 's:@SBINDIR@:$(SBINDIR):' \
 	        -e 's:@SYSCONFDIR@:$(SYSCONFDIR):' \
 	        -e 's:@USER@:$(SERVICE_USER):' \
 	        -e 's:@PORT@:$(SERVICE_PORT):' \
