@@ -27,7 +27,7 @@ clean:
 	$(RM) -r $(PROJECT_DIR)/bin $(PROJECT_DIR)/obj
 
 $(OUTDIR)/$(ASSEMBLY_NAME): $(SRCS)
-	dotnet publish -c $(CONFIGURATION) -p:PublishSingleFile=true -r $(RUNTIME)
+	dotnet publish --nologo -c $(CONFIGURATION) -p:PublishSingleFile=true -r $(RUNTIME) --sc
 
 $(OUTDIR)/$(ASSEMBLY_NAME).service: hosts.web.service.in
 	cat hosts.web.service.in \

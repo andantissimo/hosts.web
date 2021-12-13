@@ -1,17 +1,19 @@
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Hosting;
+using Hosts.Web;
 
-namespace Hosts.Web
+var web = WebApplication.CreateBuilder(args);
+web.Host.ConfigureServices(services =>
 {
-    public static class Program
+    services.AddControllers(controllers =>
     {
-        public static void Main(string[] args)
-        {
-            CreateHostBuilder(args).Build().Run();
-        }
+        controllers.InputFormatters.Add(new PlainTextInputFormatter());
+    });
+    services.Configure<AppSettings>(web.Configuration);
+});
 
-        public static IHostBuilder CreateHostBuilder(string[] args) =>
-            Host.CreateDefaultBuilder(args)
-                .ConfigureWebHostDefaults(web => web.UseStartup<Startup>());
-    }
-}
+var app = web.Build();
+app.UseForwardedHeaders(new() { ForwardedHeaders = ForwardedHeaders.All })
+   .UseDefaultFiles()
+   .UseStaticFiles()
+   .UseRouting()
+   .UseEndpoints(endpoints => endpoints.MapControllers());
+app.Run();
