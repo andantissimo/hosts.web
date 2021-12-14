@@ -1,0 +1,18 @@
+root = true
+
+[*.cs]
+charset = utf-8
+end_of_line = lf
+indent_size = 4
+indent_style = space
+insert_final_newline = true
+
+# allow using _logger.Log*** methods
+dotnet_diagnostic.CA1848.severity = silent
+
+[*.json]
+charset = utf-8
+end_of_line = lf
+indent_size = 2
+indent_style = space
+insert_final_newline = true
