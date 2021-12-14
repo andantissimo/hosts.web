@@ -24,9 +24,18 @@ public class HostsController : ControllerBase
     {
         var settings = _settings.Value;
 
-        var hosts = await ReadAllTextAsync(settings.HostsFilePath).ConfigureAwait(false);
-        var cname = await ReadAllTextAsync(settings.CnameFilePath).ConfigureAwait(false);
-        return hosts.Trim() + NewLine + cname.Trim();
+        var tasks = new[] { settings.HostsFilePath, settings.CnameFilePath }
+            .Where(path => Exists(path))
+            .Select(path => ReadAllTextAsync(path!));
+        var texts = await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        var builder = new StringBuilder();
+        foreach (var text in texts)
+        {
+            if (!string.IsNullOrWhiteSpace(text))
+                builder.AppendLine(text.Trim());
+        }
+        return builder.ToString();
     }
 
     [HttpPut]
@@ -41,27 +50,39 @@ public class HostsController : ControllerBase
             cname += NewLine + match.Value;
             return string.Empty;
         });
-        await WriteAllTextAsync(settings.HostsFilePath, hosts.Trim() + NewLine).ConfigureAwait(false);
-        await WriteAllTextAsync(settings.CnameFilePath, cname.Trim() + NewLine).ConfigureAwait(false);
+        var tasks = new (string? Path, string Text)[] { (settings.HostsFilePath, hosts), (settings.CnameFilePath, cname) }
+            .Where(it => it.Path is not null)
+            .Select(it => WriteAllTextAsync(it.Path!, it.Text.Trim() + NewLine));
+        await Task.WhenAll(tasks).ConfigureAwait(false);
 
-        List<string> stdout = new(), stderr = new();
-        var si = new ProcessStartInfo(settings.ReloadCommand.First())
+        if (settings.ReloadCommand is { Count: > 0 })
+        {
+            var (code, stdout, stderr) = await ExecuteAsync(settings.ReloadCommand).ConfigureAwait(false);
+            if (code != 0)
+                _logger.LogError("{Error}", (stdout + NewLine + stderr).Trim());
+        }
+    }
+
+    private static async Task<(int ExitCode, string Output, string Error)> ExecuteAsync(IEnumerable<string> args)
+    {
+        StringBuilder stdout = new(), stderr = new();
+        var startInfo = new ProcessStartInfo(args.First())
         {
             CreateNoWindow         = true,
             RedirectStandardOutput = true,
             RedirectStandardError  = true,
         };
-        si.ArgumentList.AddRange(settings.ReloadCommand.Skip(1));
-        using var process = new Process { StartInfo = si };
+        startInfo.ArgumentList.AddRange(args.Skip(1));
+        using var process = new Process { StartInfo = startInfo };
         process.OutputDataReceived += (_, e) =>
         {
             if (e.Data is string line)
-                stdout.Add(line);
+                stdout.AppendLine(line);
         };
         process.ErrorDataReceived += (_, e) =>
         {
             if (e.Data is string line)
-                stderr.Add(line);
+                stderr.AppendLine(line);
         };
         var exited = process.StartAsync();
         process.BeginOutputReadLine();
@@ -69,7 +90,6 @@ public class HostsController : ControllerBase
         var code = await exited.ConfigureAwait(false);
         process.CancelOutputRead();
         process.CancelErrorRead();
-        if (code != 0)
-            _logger.LogError("{output}", string.Join(NewLine, stdout.Concat(stderr)));
+        return (code, stdout.ToString().Trim(), stderr.ToString().Trim());
     }
 }
