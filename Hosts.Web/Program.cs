@@ -1,14 +1,11 @@
 using Hosts.Web;
 
 var web = WebApplication.CreateBuilder(args);
-web.Host.ConfigureServices(services =>
+web.Services.AddControllers(controllers =>
 {
-    services.AddControllers(controllers =>
-    {
-        controllers.InputFormatters.Add(new PlainTextInputFormatter());
-    });
-    services.Configure<AppSettings>(web.Configuration);
+    controllers.InputFormatters.Add(new PlainTextInputFormatter());
 });
+web.Services.Configure<AppSettings>(web.Configuration);
 
 var app = web.Build();
 app.UseForwardedHeaders(new() { ForwardedHeaders = ForwardedHeaders.All })
