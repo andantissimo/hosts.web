@@ -7,7 +7,9 @@ namespace Hosts.Web.Controllers;
 [Route("etc/hosts")]
 public class HostsController : ControllerBase
 {
-    private static readonly Regex CnamePattern = new("^cname=.*$", RegexOptions.Multiline | RegexOptions.Compiled);
+    private static readonly Regex CnamePattern = new(
+        "^cname=.*$",
+        RegexOptions.Multiline | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private readonly ILogger _logger;
     private readonly IOptions<AppSettings> _settings;
