@@ -11,7 +11,9 @@ PROJECT_DIR      := $(shell dirname $(PROJECT))
 PROJECT_NAME     := $(shell basename $(PROJECT) .csproj)
 TARGET_FRAMEWORK := $(shell perl -ne '/<(TargetFramework)>(.*)<\/\1>/ && print $$2' $(PROJECT))
 ASSEMBLY_NAME    := $(shell perl -ne '/<(AssemblyName)>(.*)<\/\1>/ && print $$2' $(PROJECT))
-ASSEMBLY_NAME    ?= $(PROJECT_NAME)
+ifeq ($(ASSEMBLY_NAME),)
+	ASSEMBLY_NAME = $(PROJECT_NAME)
+endif
 
 SRCS   := $(shell find $(PROJECT_DIR) -name *.cs -or -name *.html) $(PROJECT)
 OUTDIR := $(PROJECT_DIR)/bin/$(CONFIGURATION)/$(TARGET_FRAMEWORK)/$(RID)/publish
