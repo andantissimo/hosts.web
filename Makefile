@@ -4,15 +4,19 @@ SYSCONFDIR    ?= $(PREFIX)/etc
 SERVICE_USER  ?= $(shell id -un $(shell ps -p `pgrep dnsmasq || echo 1` -o uid=))
 SERVICE_PORT  ?= 5053
 CONFIGURATION ?= Release
-RUNTIME       ?= linux-x64
+RID           ?= linux-x64
 
-PROJECT_DIR      := Hosts.Web
-PROJECT_NAME     := Hosts.Web
-TARGET_FRAMEWORK := $(shell perl -ne '/<(TargetFramework)>(.*)<\/\1>/ && print $$2' $(PROJECT_DIR)/$(PROJECT_NAME).csproj)
-ASSEMBLY_NAME    := $(shell perl -ne '/<(AssemblyName)>(.*)<\/\1>/ && print $$2' $(PROJECT_DIR)/$(PROJECT_NAME).csproj)
+PROJECT          := $(shell perl -ne '/"([^"]+\.csproj)"/ && print $$1 =~ s:\\:/:r' *.sln)
+PROJECT_DIR      := $(shell dirname $(PROJECT))
+PROJECT_NAME     := $(shell basename $(PROJECT) .csproj)
+TARGET_FRAMEWORK := $(shell perl -ne '/<(TargetFramework)>(.*)<\/\1>/ && print $$2' $(PROJECT))
+ASSEMBLY_NAME    := $(shell perl -ne '/<(AssemblyName)>(.*)<\/\1>/ && print $$2' $(PROJECT))
+ifeq ($(ASSEMBLY_NAME),)
+	ASSEMBLY_NAME = $(PROJECT_NAME)
+endif
 
-SRCS   := $(shell find $(PROJECT_DIR) -name *.cs -or -name *.csproj -or -name *.html)
-OUTDIR := $(PROJECT_DIR)/bin/$(CONFIGURATION)/$(TARGET_FRAMEWORK)/$(RUNTIME)/publish
+SRCS   := $(shell find $(PROJECT_DIR) -name *.cs -or -name *.html) $(PROJECT)
+OUTDIR := $(PROJECT_DIR)/bin/$(CONFIGURATION)/$(TARGET_FRAMEWORK)/$(RID)/publish
 
 all: $(OUTDIR)/$(ASSEMBLY_NAME) $(OUTDIR)/$(ASSEMBLY_NAME).service
 
@@ -27,7 +31,7 @@ clean:
 	$(RM) -r $(PROJECT_DIR)/bin $(PROJECT_DIR)/obj
 
 $(OUTDIR)/$(ASSEMBLY_NAME): $(SRCS)
-	dotnet publish -c $(CONFIGURATION) -p:PublishSingleFile=true -r $(RUNTIME)
+	dotnet publish --nologo -c $(CONFIGURATION) -p:PublishSingleFile=true -p:PublishTrimmed=true -r $(RID) --sc
 
 $(OUTDIR)/$(ASSEMBLY_NAME).service: hosts.web.service.in
 	cat hosts.web.service.in \

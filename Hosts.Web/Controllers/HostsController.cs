@@ -1,55 +1,97 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using System.Diagnostics;
-using System.Net.Mime;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using static System.Environment;
 using static System.IO.File;
 
-namespace Hosts.Web.Controllers
+namespace Hosts.Web.Controllers;
+
+[ApiController]
+[Route("etc/hosts")]
+public class HostsController : ControllerBase
 {
-    [ApiController]
-    [Route("etc/hosts")]
-    public class HostsController : ControllerBase
+    private static readonly Regex CnamePattern = new(
+        "^cname=.*$",
+        RegexOptions.Multiline | RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private readonly ILogger _logger;
+    private readonly IOptions<AppSettings> _settings;
+
+    public HostsController(ILoggerFactory loggerFactory, IOptions<AppSettings> settings)
     {
-        private static readonly Regex CnamePattern = new Regex("^cname=.*$", RegexOptions.Multiline | RegexOptions.Compiled);
+        _logger = loggerFactory.CreateLogger("Hosts.Web");
+        _settings = settings;
+    }
 
-        private readonly ILogger _logger;
-        private readonly AppSettings _settings;
+    [HttpGet]
+    [Produces(MediaTypeNames.Text.Plain)]
+    public async Task<string> GetAsync()
+    {
+        var settings = _settings.Value;
 
-        public HostsController(ILoggerFactory loggerFactory, AppSettings settings)
+        var tasks = new[] { settings.HostsFilePath, settings.CnameFilePath }
+            .Where(path => Exists(path))
+            .Select(path => ReadAllTextAsync(path!));
+        var texts = await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        var builder = new StringBuilder();
+        foreach (var text in texts)
         {
-            _logger = loggerFactory.CreateLogger("Hosts.Web");
-            _settings = settings;
+            if (!string.IsNullOrWhiteSpace(text))
+                builder.AppendLine(text.Trim());
         }
+        return builder.ToString();
+    }
 
-        [HttpGet]
-        [Produces(MediaTypeNames.Text.Plain)]
-        public async Task<string> GetAsync()
+    [HttpPut]
+    [Consumes(MediaTypeNames.Text.Plain)]
+    public async Task PutAsync([FromBody] string hosts)
+    {
+        var settings = _settings.Value;
+
+        var cname = string.Empty;
+        hosts = CnamePattern.Replace(hosts, match =>
         {
-            var hosts = await ReadAllTextAsync(_settings.HostsFilePath).ConfigureAwait(false);
-            var cname = await ReadAllTextAsync(_settings.CnameFilePath).ConfigureAwait(false);
-            return hosts.Trim() + NewLine + cname.Trim();
-        }
+            cname += NewLine + match.Value;
+            return string.Empty;
+        });
+        var tasks = new (string? Path, string Text)[] { (settings.HostsFilePath, hosts), (settings.CnameFilePath, cname) }
+            .Where(it => it.Path is not null)
+            .Select(it => WriteAllTextAsync(it.Path!, it.Text.Trim() + NewLine));
+        await Task.WhenAll(tasks).ConfigureAwait(false);
 
-        [HttpPut]
-        [Consumes(MediaTypeNames.Text.Plain)]
-        public async Task PutAsync([FromBody] string hosts)
+        if (settings.ReloadCommand is { Count: > 0 })
         {
-            var cname = string.Empty;
-            hosts = CnamePattern.Replace(hosts, match =>
-            {
-                cname += NewLine + match.Value;
-                return string.Empty;
-            });
-            await WriteAllTextAsync(_settings.HostsFilePath, hosts.Trim() + NewLine).ConfigureAwait(false);
-            await WriteAllTextAsync(_settings.CnameFilePath, cname.Trim() + NewLine).ConfigureAwait(false);
-
-            var si = new ProcessStartInfo().UseStandardIO().WithArguments(_settings.ReloadCommand);
-            var (code, stdout, stderr) = await si.StartAsync().ConfigureAwait(false);
+            var (code, stdout, stderr) = await ExecuteAsync(settings.ReloadCommand).ConfigureAwait(false);
             if (code != 0)
-                _logger.LogError(stdout + NewLine + stderr);
+                _logger.LogError("{Error}", (stdout + NewLine + stderr).Trim());
         }
+    }
+
+    private static async Task<(int ExitCode, string Output, string Error)> ExecuteAsync(IEnumerable<string> args)
+    {
+        StringBuilder stdout = new(), stderr = new();
+        var startInfo = new ProcessStartInfo(args.First())
+        {
+            CreateNoWindow         = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError  = true,
+        };
+        startInfo.ArgumentList.AddRange(args.Skip(1));
+        using var process = new Process { StartInfo = startInfo };
+        process.OutputDataReceived += (_, e) =>
+        {
+            if (e.Data is string line)
+                stdout.AppendLine(line);
+        };
+        process.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data is string line)
+                stderr.AppendLine(line);
+        };
+        var exited = process.StartAsync();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+        var code = await exited.ConfigureAwait(false);
+        process.CancelOutputRead();
+        process.CancelErrorRead();
+        return (code, stdout.ToString().Trim(), stderr.ToString().Trim());
     }
 }

@@ -1,9 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AnalysisMode>Recommended</AnalysisMode>
     <UserSecretsId>hosts.web</UserSecretsId>
     <AssemblyName>hosts.web</AssemblyName>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.AspNetCore.HttpOverrides" />
+    <Using Include="Microsoft.AspNetCore.Mvc" />
+    <Using Include="Microsoft.AspNetCore.Mvc.Formatters" />
+    <Using Include="Microsoft.Extensions.Options" />
+    <Using Include="System.Diagnostics" />
+    <Using Include="System.Net.Mime" />
+    <Using Include="System.Text" />
+    <Using Include="System.Text.RegularExpressions" />
+  </ItemGroup>
 
 </Project>

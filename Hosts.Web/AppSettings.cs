@@ -1,11 +1,8 @@
-using System.Collections.Generic;
+namespace Hosts.Web;
 
-namespace Hosts.Web
+public class AppSettings
 {
-    public class AppSettings
-    {
-        public string                      HostsFilePath { get; set; }
-        public string                      CnameFilePath { get; set; }
-        public IReadOnlyCollection<string> ReloadCommand { get; set; }
-    }
+    public string                       HostsFilePath { get; set; } = "/etc/hosts";
+    public string?                      CnameFilePath { get; set; }
+    public IReadOnlyCollection<string>? ReloadCommand { get; set; }
 }
