@@ -4,7 +4,7 @@ provides web interface to edit dnsmasq custom hosts file
 
 ## Requirements
 
-* .NET Core 3.1
+* .NET 6 SDK
 * Dnsmasq
 * Systemd
 * Reverse proxy (nginx, apache httpd, etc...)
